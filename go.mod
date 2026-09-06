@@ -1,3 +1,3 @@
-module github.com/tinywasm/gorun
+module webtyp.com/gorun
 
 go 1.24.4

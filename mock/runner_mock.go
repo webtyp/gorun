@@ -1,6 +1,6 @@
 package mock
 
-import "github.com/tinywasm/gorun"
+import "webtyp.com/gorun"
 
 // FakeRunner is a mock implementation of the gorun.Runner interface.
 type FakeRunner struct {

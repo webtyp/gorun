@@ -16,7 +16,7 @@ Usage (essential)
 Install:
 
 ```sh
-go get github.com/tinywasm/gorun
+go get webtyp.com/gorun
 ```
 
 Minimal example (use `WorkingDir` when child needs a specific CWD):
@@ -57,4 +57,4 @@ These tests exercise WorkingDir handling and cleanup behaviors.
 
 
 
-## [Contributing](https://github.com/tinywasm/cdvelop/blob/main/CONTRIBUTING.md)
+## [Contributing](https://github.com/webtyp/cdvelop/blob/main/CONTRIBUTING.md)

@@ -3,8 +3,8 @@ package gorun_test
 import (
 	"testing"
 
-	"github.com/tinywasm/gorun"
-	"github.com/tinywasm/gorun/mock"
+	"webtyp.com/gorun"
+	"webtyp.com/gorun/mock"
 )
 
 func TestRunnerInterface(t *testing.T) {
