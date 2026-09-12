@@ -3,6 +3,7 @@ package gorun
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -40,6 +41,26 @@ func (h *GoRun) RunProgram() error {
 	// Set working directory if specified
 	if h.WorkingDir != "" {
 		h.Cmd.Dir = h.WorkingDir
+	}
+
+	// Forward the project's .env into the child, without overriding
+	// anything already exported in this process's own environment — same
+	// priority order webtyp.com/env already uses (process env wins).
+	if h.EnvFile != "" {
+		env := os.Environ()
+		existing := make(map[string]bool, len(env))
+		for _, kv := range env {
+			if k, _, ok := strings.Cut(kv, "="); ok {
+				existing[k] = true
+			}
+		}
+		for _, kv := range parseEnvFile(h.EnvFile, h.Logger) {
+			k, _, _ := strings.Cut(kv, "=")
+			if !existing[k] {
+				env = append(env, kv)
+			}
+		}
+		h.Cmd.Env = env
 	}
 
 	stderr, err := h.Cmd.StderrPipe()

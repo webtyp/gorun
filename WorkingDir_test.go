@@ -34,14 +34,12 @@ func TestWorkingDir(t *testing.T) {
 			t.Fatalf("Error running program: %v", err)
 		}
 
-		// Wait a bit for the program to execute and output
-		time.Sleep(100 * time.Millisecond)
+		outputStr := waitForOutput(t, gorun, 2*time.Second)
 
 		// Stop the program
 		gorun.StopProgram()
 
 		// Check if the output contains the expected working directory (thread-safe)
-		outputStr := gorun.getOutput()
 		if !strings.Contains(outputStr, subDir) {
 			t.Errorf("Expected working directory %s in output, got: %s", subDir, outputStr)
 		}
@@ -67,8 +65,7 @@ func TestWorkingDirNotSet(t *testing.T) {
 			t.Fatalf("Error running program: %v", err)
 		}
 
-		// Wait a bit for the program to execute and output
-		time.Sleep(100 * time.Millisecond)
+		outputStr := waitForOutput(t, gorun, 2*time.Second)
 
 		// Stop the program
 		gorun.StopProgram()
@@ -80,9 +77,24 @@ func TestWorkingDirNotSet(t *testing.T) {
 		}
 
 		// Check if the output contains the current working directory (thread-safe)
-		outputStr := gorun.getOutput()
 		if !strings.Contains(outputStr, currentDir) {
 			t.Errorf("Expected current directory %s in output, got: %s", currentDir, outputStr)
 		}
 	})
+}
+
+// waitForOutput polls getOutput() until it is non-empty or timeout elapses,
+// instead of a fixed sleep — the short-lived "pwd" process this file tests
+// can take longer than a fixed delay to exit and have its output copied
+// under system load, which made these tests flaky.
+func waitForOutput(t *testing.T, gr *GoRun, timeout time.Duration) string {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if out := gr.getOutput(); out != "" {
+			return out
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return gr.getOutput()
 }
