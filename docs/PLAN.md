@@ -2,6 +2,8 @@
 PLAN: "fix: forward child process output one line at a time, per stream"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 398667440618462986
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
