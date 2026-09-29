@@ -41,7 +41,15 @@ func (sb *SafeBuffer) Write(p []byte) (n int, err error) {
 
 	// Forward to function logger if configured
 	if sb.forwardTo != nil {
-		sb.forwardTo(string(p))
+		parts := bytes.Split(p, []byte("\n"))
+		for _, part := range parts {
+			if len(part) > 0 && part[len(part)-1] == '\r' {
+				part = part[:len(part)-1]
+			}
+			if len(part) > 0 {
+				sb.forwardTo(string(part))
+			}
+		}
 	}
 
 	return n, err
@@ -52,6 +60,11 @@ func (sb *SafeBuffer) String() string {
 	sb.mutex.RLock()
 	defer sb.mutex.RUnlock()
 	return sb.buffer.String()
+}
+
+// lineWriter returns a new per-stream writer bound to this buffer.
+func (sb *SafeBuffer) lineWriter() *lineWriter {
+	return &lineWriter{sb: sb}
 }
 
 // Reset resets the buffer in a thread-safe manner
