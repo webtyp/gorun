@@ -1,11 +1,13 @@
 package gorun
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -305,4 +307,70 @@ func main() {
 
 	// Program should have exited on its own
 	// The IsRunning state depends on how the implementation handles finished processes
+}
+
+func TestRunProgram_ForwardsOneEntryPerLine(t *testing.T) {
+	execPath := buildTestProgram(t, "two_lines")
+	defer os.Remove(execPath)
+
+	exitChan := make(chan bool)
+	var mu sync.Mutex
+	var calls []string
+
+	logger := func(args ...any) {
+		mu.Lock()
+		defer mu.Unlock()
+		msg := fmt.Sprint(args...)
+		calls = append(calls, msg)
+	}
+
+	config := &Config{
+		ExecProgramPath: execPath,
+		RunArguments:    func() []string { return []string{} },
+		ExitChan:        exitChan,
+		Logger:          logger,
+	}
+
+	gr := New(config)
+
+	err := gr.RunProgram()
+	if err != nil {
+		t.Fatalf("RunProgram() failed: %v", err)
+	}
+
+	// Poll IsRunning until false with a 5s timeout
+	start := time.Now()
+	for gr.IsRunning() {
+		if time.Since(start) > 5*time.Second {
+			t.Fatal("timed out waiting for program to exit")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Give a short time for logger goroutines to finish forwarding
+	time.Sleep(50 * time.Millisecond)
+
+	mu.Lock()
+	recorded := make([]string, len(calls))
+	copy(recorded, calls)
+	mu.Unlock()
+
+	var firstFound, secondFound bool
+	for _, entry := range recorded {
+		if strings.Contains(entry, "\n") {
+			t.Errorf("found newline in forwarded entry: %q", entry)
+		}
+		if entry == "FIRST_LINE" {
+			firstFound = true
+		}
+		if entry == "SECOND_LINE" {
+			secondFound = true
+		}
+	}
+
+	if !firstFound || !secondFound {
+		t.Errorf("expected FIRST_LINE and SECOND_LINE as separate entries, recorded entries: %v", recorded)
+	}
+
+	gr.StopProgram()
 }

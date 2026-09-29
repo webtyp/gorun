@@ -2,8 +2,9 @@
 PLAN: "fix: forward child process output one line at a time, per stream"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 398667440618462986
+PR: https://github.com/webtyp/gorun/pull/4
 ---
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.

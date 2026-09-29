@@ -95,8 +95,13 @@ func (h *GoRun) RunProgram() error {
 	// Create local references for goroutines to avoid race conditions
 	currentCmd := h.Cmd
 
-	go io.Copy(h.safeBuffer, stderr)
-	go io.Copy(h.safeBuffer, stdout)
+	for _, stream := range []io.Reader{stderr, stdout} {
+		lw := h.safeBuffer.lineWriter()
+		go func(r io.Reader) {
+			io.Copy(lw, r)
+			lw.Flush()
+		}(stream)
+	}
 
 	go func() {
 		select {
