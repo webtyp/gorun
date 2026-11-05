@@ -3,106 +3,53 @@ package gorun
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
-	"strconv"
+	"path/filepath"
 	"strings"
 )
 
-// StopApp terminates all running instances of the named daemon/service.
-// Detects the OS and delegates to the existing platform-specific kill functions.
-func StopApp(name string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return killAllWindows(name)
-	default:
-		return killAllUnix(name)
-	}
-}
-
-// KillAllByName kills all running processes that match the given executable name
-// This is useful for cleanup when multiple instances might be running
-// Deprecated: Use StopApp instead.
-func KillAllByName(executableName string, disableGlobal bool) error {
-	if disableGlobal {
-		return nil
-	}
-	return StopApp(executableName)
-}
-
-// killAllWindows kills all processes by name on Windows
-func killAllWindows(executableName string) error {
-	if !strings.HasSuffix(strings.ToLower(executableName), ".exe") {
-		executableName += ".exe"
-	}
-
-	// Use taskkill command on Windows
-	cmd := exec.Command("taskkill", "/F", "/IM", executableName)
-	output, err := cmd.CombinedOutput()
-
-	// taskkill returns error if no processes found, which is ok
-	if err != nil && !strings.Contains(string(output), "not found") {
-		return fmt.Errorf("failed to kill processes %s: %v, output: %s", executableName, err, output)
-	}
-
-	return nil
-}
-
-// killAllUnix kills all processes by name on Unix-like systems (Linux, macOS)
-func killAllUnix(executableName string) error {
-	// First, find all PIDs exactly matching the executable name
-	// SAFETY: Do NOT use -f as it matches the entire command line and can kill unrelated processes (like the IDE)
-	cmd := exec.Command("pgrep", "-x", executableName)
-	output, err := cmd.Output()
+// killAllByPath kills every running process whose executable is exactly
+// executablePath, except this process and its parent. Matching the path —
+// never the bare name — is what lets two projects run a binary called
+// "server" side by side: each one only ever kills its own.
+func killAllByPath(executablePath string) error {
+	abs, err := filepath.Abs(executablePath)
 	if err != nil {
-		// pgrep returns 1 if no processes found, which is ok
-		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 1 {
-			return nil // No processes found
-		}
-		return fmt.Errorf("failed to find processes matching %s: %v", executableName, err)
+		return fmt.Errorf(errResolvePath, executablePath, err)
 	}
-
-	// Parse PIDs and kill them
-	pids := strings.Fields(string(output))
-	var errors []string
-
-	myPid := os.Getpid()
-	parentPid := os.Getppid()
-
-	for _, pidStr := range pids {
-		pid, err := strconv.Atoi(strings.TrimSpace(pidStr))
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("invalid PID %s: %v", pidStr, err))
-			continue
-		}
-
-		// SAFETY: Never kill ourselves or our parent (IDE)
+	pids, err := listPIDsByExecutable(abs)
+	if err != nil {
+		return err
+	}
+	myPid, parentPid := os.Getpid(), os.Getppid()
+	var failures []string
+	for _, pid := range pids {
 		if pid == myPid || pid == parentPid {
 			continue
 		}
-
-		// Find the process and kill it
 		process, err := os.FindProcess(pid)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to find process %d: %v", pid, err))
+			failures = append(failures, fmt.Sprintf(errFindProcess, pid, err))
 			continue
 		}
-
-		// Reuses extracted graceful kill function
 		if err := killProcessGraceful(process); err != nil {
-			errors = append(errors, fmt.Sprintf("failed to kill process %d: %v", pid, err))
+			failures = append(failures, fmt.Sprintf(errKillProcess, pid, err))
 		}
 	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("some processes could not be killed: %s", strings.Join(errors, "; "))
+	if len(failures) > 0 {
+		return fmt.Errorf(errSomeNotKilled, strings.Join(failures, "; "))
 	}
-
 	return nil
 }
 
-// StopProgramAndCleanup stops the current program and optionally kills all instances
-// of the same executable name
+const (
+	errResolvePath   = "gorun: resolve executable path %s: %w"
+	errFindProcess   = "failed to find process %d: %v"
+	errKillProcess   = "failed to kill process %d: %v"
+	errSomeNotKilled = "some processes could not be killed: %s"
+)
+
+// StopProgramAndCleanup stops the current program and optionally kills every other
+// process of the same executable path (orphans of a crashed parent)
 func (h *GoRun) StopProgramAndCleanup(killAll bool) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -114,20 +61,11 @@ func (h *GoRun) stopProgramAndCleanupUnsafe(killAll bool) error {
 	// First stop our specific process
 	err := h.stopProgramUnsafe()
 
-	// If requested, also kill all other instances (safety check inside KillAllByName)
-	if killAll && h.ExecProgramPath != "" {
-		// Extract executable name from path
-		execName := h.ExecProgramPath
-		if lastSlash := strings.LastIndex(execName, "/"); lastSlash != -1 {
-			execName = execName[lastSlash+1:]
-		}
-		if lastBackslash := strings.LastIndex(execName, "\\"); lastBackslash != -1 {
-			execName = execName[lastBackslash+1:]
-		}
-
-		if cleanupErr := KillAllByName(execName, h.DisableGlobalCleanup); cleanupErr != nil {
-			// Log the cleanup error but don't override the main error
-			fmt.Fprintf(os.Stderr, "Warning: Failed to cleanup all instances of %s: %v\n", execName, cleanupErr)
+	// If requested, also kill other instances of this exact executable
+	// (orphans of a parent that died without stopping its child).
+	if killAll && h.ExecProgramPath != "" && !h.DisableGlobalCleanup {
+		if cleanupErr := killAllByPath(h.ExecProgramPath); cleanupErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to cleanup other instances of %s: %v\n", h.ExecProgramPath, cleanupErr)
 		}
 	}
 

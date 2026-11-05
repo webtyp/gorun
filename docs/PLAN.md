@@ -2,8 +2,10 @@
 PLAN: "fix: stop kills only processes of the same executable path, never every process with the same name"
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 6426112914768762331
+PR: https://github.com/webtyp/gorun/pull/5
+REVIEWED_COMMIT: dd9b93509376d8e5013b432038ebb0af3138a794
 ---
 
 > Read AGENTS.md at the repo root before any change.

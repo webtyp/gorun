@@ -11,7 +11,7 @@ type Config struct {
 	ExitChan             chan bool
 	Logger               func(message ...any)
 	KillAllOnStop        bool   // If true, kills all instances of the executable when stopping
-	DisableGlobalCleanup bool   // If true, disables global cleanup (pgrep -f) even if KillAllOnStop is true
+	DisableGlobalCleanup bool   // If true, never kills other processes of the same executable path, even if KillAllOnStop is true
 	WorkingDir           string // eg: "/path/to/working/dir"
 	EnvFile              string // eg: "/path/to/project/.env" — parsed and merged into the child's environment, lower priority than the parent process's own environment. Empty ("") disables this feature entirely.
 }
