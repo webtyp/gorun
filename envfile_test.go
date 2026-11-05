@@ -16,7 +16,7 @@ func TestParseEnvFile_ParsesPairsSkipsCommentsAndBlanks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := parseEnvFile(path, nil)
+	got := ParseEnvFile(path, nil)
 	want := []string{"KEY=value", "QUOTED=a b"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v, want %v", got, want)
@@ -32,7 +32,7 @@ func TestParseEnvFile_MissingFileReturnsNilNoLog(t *testing.T) {
 	var logged bool
 	logger := func(message ...any) { logged = true }
 
-	got := parseEnvFile(filepath.Join(t.TempDir(), "does-not-exist.env"), logger)
+	got := ParseEnvFile(filepath.Join(t.TempDir(), "does-not-exist.env"), logger)
 	if got != nil {
 		t.Errorf("got %v, want nil", got)
 	}
@@ -48,7 +48,7 @@ func TestParseEnvFile_UnreadablePathLogsAndReturnsNil(t *testing.T) {
 	var messages []any
 	logger := func(message ...any) { messages = append(messages, message...) }
 
-	got := parseEnvFile(dir, logger)
+	got := ParseEnvFile(dir, logger)
 	if got != nil {
 		t.Errorf("got %v, want nil", got)
 	}

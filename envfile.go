@@ -5,14 +5,15 @@ import (
 	"strings"
 )
 
-// parseEnvFile reads a KEY=VALUE .env file and returns its pairs as
+// Example: env := gorun.ParseEnvFile(".env", log)
+// ParseEnvFile reads a KEY=VALUE .env file and returns its pairs as
 // "KEY=VALUE" strings, ready to append to an exec.Cmd.Env slice. Lines that
 // are blank, start with "#", or do not contain "=" are skipped. A value
 // wrapped in double quotes has them stripped. A missing file is not an
 // error — EnvFile is optional per-project — so nothing is logged for that
 // case; any other read error is reported through logger so it stays a loud
 // diagnostic instead of a silently empty environment.
-func parseEnvFile(path string, logger func(message ...any)) []string {
+func ParseEnvFile(path string, logger func(message ...any)) []string {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) && logger != nil {

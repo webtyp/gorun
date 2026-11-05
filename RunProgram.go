@@ -54,7 +54,7 @@ func (h *GoRun) RunProgram() error {
 				existing[k] = true
 			}
 		}
-		for _, kv := range parseEnvFile(h.EnvFile, h.Logger) {
+		for _, kv := range ParseEnvFile(h.EnvFile, h.Logger) {
 			k, _, _ := strings.Cut(kv, "=")
 			if !existing[k] {
 				env = append(env, kv)
