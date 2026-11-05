@@ -11,50 +11,65 @@ gorun is a Go package that provides a simple interface to run, monitor, and stop
 
 Small helper to run/monitor/stop external programs from Go.
 
-Usage (essential)
+## Why This Exists
 
-Install:
+Without gorun, managing external processes requires repetitive boilerplate: `exec.Command`, channel synchronization, handling stdout/stderr, and manually tracking PIDs to ensure proper termination.
+
+With gorun, process management becomes declarative. A single `RunProgram` call handles execution and output forwarding, while `StopProgram` ensures cross-platform graceful termination without dangling processes.
+
+## Before You Start
+
+Install the package:
 
 ```sh
 go get webtyp.com/gorun
 ```
 
-Minimal example (use `WorkingDir` when child needs a specific CWD):
+## Step-by-Step Guide
+
+Minimal example demonstrating execution and graceful termination:
 
 ```go
-cfg := &gorun.Config{
-    ExecProgramPath: "./my-server",
-    WorkingDir:      "/abs/path/to/project/pwa", // optional
-    ExitChan:        make(chan bool),
+package main
+
+import (
+	"log"
+	"time"
+
+	"webtyp.com/gorun"
+)
+
+func main() {
+	cfg := &gorun.Config{
+		ExecProgramPath: "./my-server",
+		WorkingDir:      "/abs/path/to/project", // optional
+		ExitChan:        make(chan bool),
+		KillAllOnStop:   true,
+	}
+
+	r := gorun.New(cfg)
+
+	if err := r.RunProgram(); err != nil {
+		log.Fatalf("Failed to run: %v", err)
+	}
+
+	// Wait for program to run
+	time.Sleep(5 * time.Second)
+
+	if err := r.StopProgram(); err != nil {
+		log.Fatalf("Failed to stop: %v", err)
+	}
 }
-r := gorun.New(cfg)
-_ = r.RunProgram()
-// ... stop when needed
-_ = r.StopProgram()
-
-// Or stop any running app by name (cross-platform)
-_ = gorun.StopApp("my-server")
-// By default gorun captures output internally. For programmatic access in
-// tests prefer not to rely on exported getters; pass a `Logger` (io.Writer)
-// to receive forwarded output, or inspect the internal buffer from tests.
 ```
 
-Notes
-- `WorkingDir`: optional; if empty child inherits parent's CWD. Prefer absolute paths.
-- `Logger`: optional io.Writer. gorun captures output internally; use `GetOutput()` in tests or when you need programmatic access.
+With `KillAllOnStop`, `RunProgram` and `StopProgram` also kill orphans of the **same executable path** (left by a crashed parent). Two programs with the same file name in different folders never touch each other. `DisableGlobalCleanup: true` turns that off.
 
-Tests
+## Documentation Map
 
-```bash
-cd gorun
-go test ./... -v
-go test ./... -race -v  # run with race detector
-```
-
-That's it — small, focused, non-redundant docs. If you want, I can add one short `goserver` example showing how to set `WorkingDir` from an `AutoConfig`.
-
-These tests exercise WorkingDir handling and cleanup behaviors.
-
-
+| Topic | File |
+|---|---|
+| Process execution and monitoring | `RunProgram.go` |
+| Graceful cross-platform termination | `StopProgram.go` |
+| Orphan process cleanup by path | `cleanup.go` |
 
 ## [Contributing](https://github.com/webtyp/cdvelop/blob/main/CONTRIBUTING.md)
