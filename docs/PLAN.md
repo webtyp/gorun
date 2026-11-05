@@ -2,6 +2,8 @@
 PLAN: "fix: stop kills only processes of the same executable path, never every process with the same name"
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 6426112914768762331
 ---
 
 > Read AGENTS.md at the repo root before any change.
