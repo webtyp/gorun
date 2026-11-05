@@ -48,8 +48,8 @@ const (
 	errSomeNotKilled = "some processes could not be killed: %s"
 )
 
-// StopProgramAndCleanup stops the current program and optionally kills all instances
-// of the same executable name
+// StopProgramAndCleanup stops the current program and optionally kills every other
+// process of the same executable path (orphans of a crashed parent)
 func (h *GoRun) StopProgramAndCleanup(killAll bool) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()

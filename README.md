@@ -1,15 +1,7 @@
 # gorun
 <img src="docs/img/badges.svg">
 
-gorun is a Go package that provides a simple interface to run, monitor, and stop external programs, capturing their output and handling graceful shutdowns.
-
-## Usage
-
-### Installation
-
-# gorun
-
-Small helper to run/monitor/stop external programs from Go.
+gorun runs, monitors and stops external programs from Go, capturing their output and shutting them down gracefully.
 
 ## Why This Exists
 
